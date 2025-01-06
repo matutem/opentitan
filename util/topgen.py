@@ -1263,6 +1263,7 @@ def _check_countermeasures(completecfg: Dict[str, object],
         log.debug("Checking countermeasures for %s.", name)
         success &= name_to_block[name].check_cm_annotations(
             rtl_names, hjson_path.name)
+        success &= name_to_block[name].check_regwens()
     if success:
         log.info("All Hjson declared countermeasures are implemented in RTL.")
     else:

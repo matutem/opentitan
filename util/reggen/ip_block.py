@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 '''Code representing an IP block for reggen'''
 
+import logging as log
 from typing import Dict, List, Optional, Sequence, Set, Tuple
 
 import hjson  # type: ignore
@@ -622,3 +623,34 @@ class IpBlock:
         return CounterMeasure.check_annotation_list(self.name, hjson_path,
                                                     rtl_names,
                                                     self.countermeasures)
+
+    def check_regwens(self):
+        """Checks all regwens are used in at least one other CSR
+
+        This relies on the regwen having the string "REGWEN" in its name.
+        The uses should be in the "regwen" field of a CSR.
+        """
+        status = True
+        log.info(f"Checking regwens for IP {self.name}")
+        for rb in self.reg_blocks.values():
+            rb_name = rb.name if rb.name else "default"
+            log.info(f"Register block: {rb_name}")
+            regwen_names: List[str] = [reg.name for reg in rb.registers
+                                       if "REGWEN" in reg.name]
+            unused_regwens: List[str] = []
+            for regwen in regwen_names:
+                regwen_users = []
+                for reg in rb.registers:
+                    if reg.regwen == regwen:
+                        regwen_users.append(reg)
+                for multi_reg in rb.multiregs:
+                    for reg in multi_reg.regs:
+                        if reg.regwen == regwen:
+                            regwen_users.append(reg)
+                if not regwen_users:
+                    unused_regwens.append(regwen)
+            if regwen_names and unused_regwens:
+                log.error(f"Unused regwen(s) in {self.name} {rb_name} "
+                          f"register block: {', '.join(unused_regwens)}")
+                status = False
+        return status
